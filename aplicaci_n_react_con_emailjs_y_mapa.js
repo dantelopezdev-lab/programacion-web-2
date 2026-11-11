@@ -2,41 +2,49 @@ import React, { useRef, useState } from 'react';
 import emailjs from '@emailjs/browser';
 
 export default function App() {
-  const form = useRef();
+  const form = useRef(null);
   const [status, setStatus] = useState({ loading: false, success: false, error: null });
 
-  // REEMPLAZAR ESTAS 3 VARIABLES CON TUS CREDENCIALES DE EMAILJS
-  const SERVICE_ID = 'TU_SERVICE_ID';
-  const TEMPLATE_ID = 'TU_TEMPLATE_ID';
-  const PUBLIC_KEY = 'TU_PUBLIC_KEY';
+  // Configurá estas variables en el archivo .env del proyecto (Vite).
+  const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+  const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+  const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
-  const sendEmail = (e) => {
+  const sendEmail = async (e) => {
     e.preventDefault();
+
+    if (!form.current) return;
+
+    if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
+      setStatus({
+        loading: false,
+        success: false,
+        error: 'Falta configurar EmailJS. Revisá las variables VITE_EMAILJS_* y reiniciá el servidor.',
+      });
+      return;
+    }
+
     setStatus({ loading: true, success: false, error: null });
 
-    emailjs
-      .sendForm(SERVICE_ID, TEMPLATE_ID, form.current, {
+    try {
+      await emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, form.current, {
         publicKey: PUBLIC_KEY,
-      })
-      .then(
-        () => {
-          setStatus({ loading: false, success: true, error: null });
-          form.current.reset();
-        },
-        (error) => {
-          console.error('Error al enviar:', error.text);
-          setStatus({
-            loading: false,
-            success: false,
-            error: 'Ocurrió un error al enviar el mensaje. Verifica la configuración de EmailJS.',
-          });
-        }
-      );
+      });
+
+      form.current.reset();
+      setStatus({ loading: false, success: true, error: null });
+    } catch (error) {
+      console.error('Error al enviar el mensaje con EmailJS:', error);
+      setStatus({
+        loading: false,
+        success: false,
+        error: 'No se pudo enviar el mensaje. Verificá la conexión y la configuración de EmailJS.',
+      });
+    }
   };
 
   return (
     <div style={styles.page}>
-      {/* Encabezado */}
       <header style={styles.header}>
         <div style={styles.container}>
           <span style={styles.badge}>UPATecO • Programación Web II</span>
@@ -47,10 +55,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Contenido Principal: Grid de 2 Columnas */}
       <main style={styles.container}>
         <div style={styles.grid}>
-          {/* Columna 1: Formulario con EmailJS */}
           <section style={styles.card}>
             <h2 style={styles.sectionTitle}>Envíanos un mensaje</h2>
             <p style={styles.cardDescription}>
@@ -66,6 +72,7 @@ export default function App() {
                   id="user_name"
                   type="text"
                   name="user_name"
+                  autoComplete="name"
                   required
                   placeholder="Ej: Juan Pérez"
                   style={styles.input}
@@ -80,6 +87,7 @@ export default function App() {
                   id="user_email"
                   type="email"
                   name="user_email"
+                  autoComplete="email"
                   required
                   placeholder="juanperez@example.com"
                   style={styles.input}
@@ -103,26 +111,25 @@ export default function App() {
               <button
                 type="submit"
                 disabled={status.loading}
-                style={status.loading ? { ...styles.button, opacity: 0.7 } : styles.button}
+                style={status.loading ? { ...styles.button, opacity: 0.7, cursor: 'not-allowed' } : styles.button}
               >
                 {status.loading ? 'Enviando...' : 'Enviar Mensaje'}
               </button>
 
               {status.success && (
-                <div style={styles.alertSuccess}>
+                <div style={styles.alertSuccess} role="status" aria-live="polite">
                   ¡Tu mensaje ha sido enviado exitosamente! Te responderemos a la brevedad.
                 </div>
               )}
 
               {status.error && (
-                <div style={styles.alertError}>
+                <div style={styles.alertError} role="alert" aria-live="assertive">
                   {status.error}
                 </div>
               )}
             </form>
           </section>
 
-          {/* Columna 2: Mapa de UPATecO */}
           <section style={styles.card}>
             <h2 style={styles.sectionTitle}>Nuestra Ubicación</h2>
             <p style={styles.cardDescription}>
@@ -132,11 +139,11 @@ export default function App() {
             <div style={styles.mapContainer}>
               <iframe
                 title="Ubicación UPATecO"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3620.768615012549!2d-65.411626!3d-24.757041!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x941bc4264c76c971%3A0x5ffb7316c3bf2248!2sUPATecO!5e0!3m2!1ses!2sar!4v1700000000000!5m2!1ses!2sar"
+                src="https://www.google.com/maps?q=UPATecO%20Sede%20Central%2C%20Salta%2C%20Argentina&output=embed"
                 width="100%"
                 height="100%"
                 style={{ border: 0, borderRadius: '8px' }}
-                allowFullScreen=""
+                allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />
@@ -146,7 +153,10 @@ export default function App() {
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#4b5563' }}>
                 📍 <strong>Dirección:</strong> Av. Constitución / B° Pereyra Rozas, Salta.<br />
                 📞 <strong>Teléfono de contacto:</strong> 0387 556-9961<br />
-                🌐 <strong>Web institucional:</strong> https://upateco.edu.ar
+                🌐 <strong>Web institucional:</strong>{' '}
+                <a href="https://upateco.edu.ar" target="_blank" rel="noreferrer">
+                  upateco.edu.ar
+                </a>
               </p>
             </div>
           </section>
@@ -162,7 +172,6 @@ export default function App() {
   );
 }
 
-// Estilos limpios y modernos embebidos
 const styles = {
   page: {
     minHeight: '100vh',
